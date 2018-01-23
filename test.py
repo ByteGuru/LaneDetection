@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import copy
 
 def draw_lines(img, lines, color=[255, 0, 0], thickness=2):
     """
@@ -29,9 +30,8 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     Returns an image with hough lines drawn.
     """
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
-    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-    draw_lines(line_img, lines)
-    return line_img
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8) 
+    return (line_img, lines)
 
 # Python 3 has support for cool math symbols.
 
@@ -72,6 +72,45 @@ def region_of_interest(img, vertices):
     #returning the image only where mask pixels are nonzero
     masked_image = cv2.bitwise_and(img, mask)
     return masked_image
+def distancePoint(x1,y1, x2, y2):
+	diff1 = x1 - x2
+	if (0 > diff1):
+		diff1 = diff1 * (-1)
+
+	diff2 = y1 - y2
+	if (0 > diff2):
+		diff2 = diff2 * (-1)
+
+	return  (diff1 + diff2) / 2
+
+def distanceLines(line1, line2):
+	distance = distancePoint(line1[0], line1[1], line2[0], line2[1]) + distancePoint(line1[2], line1[3], line2[2], line2[3])
+	return distance / 2
+
+def averageLines(lines):
+	threshold = 60
+	i = 0
+	k = 0
+	newList=[]	
+	alreadyDetected=[]
+	while (k < len(lines)):
+		alreadyDetected.insert(k,0)
+		k+=1
+	while (i < len(lines)):
+		j = i + 1
+		while (j < len(lines)):
+			print lines[i], lines[j], distanceLines(lines[i][0], lines[j][0])
+			if (threshold > distanceLines(lines[i][0], lines[j][0])):
+				print "same line at", j
+				alreadyDetected[j]=1
+			j = j +1
+		i = i +1
+	i = 0
+	while (i < len(lines)):
+		if(0== alreadyDetected[i]):
+			newList.insert(len(newList), lines[i])
+		i+=1
+	return newList
 
 image = cv2.imread("org.jpg")
 gray=cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -92,19 +131,20 @@ high_threshold = 150
 canny_edges = cv2.Canny(gauss_gray,low_threshold,high_threshold)
 
 imshape = image.shape
-print(imshape)
 lower_left = [imshape[1]/9,imshape[0]]
 lower_right = [imshape[1]-imshape[1]/9,imshape[0]]
 top_left = [imshape[1]/2-imshape[1]/8,imshape[0]/2+imshape[0]/10]
 top_right = [imshape[1]/2+imshape[1]/8,imshape[0]/2+imshape[0]/10]
 
-lower_left=[0,imshape[0]]
-lower_right=[imshape[1],imshape[0]]
-top_right=[imshape[1]*5/8,imshape[0]/3]
-top_left=[imshape[1]/5,imshape[0]/3]
+lower_left=[0,imshape[0] - 20]
+lower_right=[imshape[1],imshape[0] - 20]
+top_right=[imshape[1]*5/8,imshape[0]/2]
+top_left=[imshape[1]/5,imshape[0]/2]
+
+print lower_left, lower_right
+print imshape
 
 vertices = [np.array([lower_left,top_left,top_right,lower_right],dtype=np.int32)]
-print(lower_left,lower_right,top_left,top_right,vertices)
 roi_image = region_of_interest(canny_edges, vertices)
 
 #rho and theta are the distance and angular resolution of the grid in Hough space
@@ -112,10 +152,23 @@ roi_image = region_of_interest(canny_edges, vertices)
 rho = 2
 theta = np.pi/180
 #threshold is minimum number of intersections in a grid for candidate line to go to output
-threshold = 100
+threshold = 150
 min_line_len = 50
-max_line_gap = 200
-line_image = hough_lines(roi_image, rho, theta, threshold, min_line_len, max_line_gap)
+max_line_gap = 300
+houghResult = hough_lines(roi_image, rho, theta, threshold, min_line_len, max_line_gap)
+line_image = houghResult[0]
+line_image_avg = copy.copy(line_image)
+lines = houghResult[1]
+draw_lines(line_image, lines)
+
+averageLines = averageLines(lines)
+draw_lines(line_image_avg, averageLines)
+
+print "result"
+print "before ",lines
+print "after ",averageLines
+
+
 
 result = weighted_img(line_image, image, a=0.8, b=1., g=0.)
 
@@ -128,4 +181,5 @@ cv2.imwrite("d.jpg", gauss_gray)
 cv2.imwrite("e.jpg", canny_edges)
 cv2.imwrite("f.jpg", roi_image)
 cv2.imwrite("g.jpg", line_image)
-cv2.imwrite("h.jpg", result)
+cv2.imwrite("h.jpg", line_image_avg)
+cv2.imwrite("j.jpg", result)
