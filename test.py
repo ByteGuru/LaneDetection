@@ -111,6 +111,62 @@ def averageLines(lines):
 			newList.insert(len(newList), lines[i])
 		i+=1
 	return newList
+def getCarMargins(image):
+	#width in procent
+	width = 50
+	height = 10
+	imgShape=image.shape
+	return [(imgShape[1]/2 - (imgShape[1] * width /100 / 2),imgShape[0]), (imgShape[1]/2 + (imgShape[1] * width /100 / 2),imgShape[0]-(imgShape[0] * 10/100))]
+def drawCarDirection(image, margins):
+	#width in procent
+	width = 50
+	imgShape=image.shape
+	cv2.rectangle(image, margins[0], margins[1], [0,255,0], 2)
+def getOrientation(image, lines, margins):
+	center = [(margins[0][0] + margins[1][0]) / 2, (margins[0][1] + margins[1][1]) / 2]
+	laneEnd = []	
+
+	if (1 < len(lines)):
+		i = 0
+		while (2 > i):
+			closePoint = lines[i][0]
+			secondPoint = copy.copy(lines[i][0])
+			print closePoint, secondPoint, closePoint
+			if (distancePoint(closePoint[0], closePoint[1], center[0], center[1]) < distancePoint(secondPoint[2], secondPoint[3], center[0], center[1])):
+				closePoint[0] = secondPoint[2]
+				closePoint[1] = secondPoint[3]
+				closePoint[2] = secondPoint[0]
+				closePoint[3] = secondPoint[1]
+			i = i + 1
+
+			print closePoint
+			cv2.circle(image, (closePoint[0], closePoint[1]), 20,[0,0,255], 2)
+			laneEnd.insert(len(laneEnd), [closePoint[0], closePoint[1]])
+		print laneEnd
+
+	cv2.line(image, (center[0], center[1]), (center[0], 100), [0,255,0], 2)
+	laneLocLeft = laneEnd[0]
+	laneLocRight = laneEnd[1]
+	if (laneLocLeft[0] > laneLocRight[0]):
+		laneLocRight = laneLocLeft
+		laneLocLeft = laneEnd[1]
+	print "lane left=",laneLocLeft," lane right=", laneLocRight
+	
+	distanceLeftLaneCenter = center[0] - laneLocLeft[0]
+	distanceRightLaneCenter = laneLocRight[0] - center[0]
+	distanceMedium = (distanceLeftLaneCenter + distanceRightLaneCenter) / 2
+	distanceLeftLaneProcent = (distanceLeftLaneCenter * 100) / distanceMedium
+	distanceRightLaneProcent = (distanceRightLaneCenter * 100) / distanceMedium
+
+	print "Left procent=", distanceLeftLaneProcent, "Right procent=", distanceRightLaneProcent
+
+	cv2.line(image, (laneLocLeft[0], laneLocLeft[1]), (center[0], center[1]),[0,0,255],2)
+	cv2.putText(image, str(distanceLeftLaneCenter)+" "+str(distanceLeftLaneProcent)+"%", (laneLocLeft[0] + 20,laneLocLeft[1]-10), 0, 2, [0,0,255],2,cv2.LINE_AA)
+	
+	cv2.line(image, (laneLocRight[0], laneLocRight[1]), (center[0], center[1]),[0,0,255],2)
+	cv2.putText(image, str(distanceRightLaneCenter) + " "+ str(distanceRightLaneProcent)+"%", (laneLocRight[0] - 300,laneLocRight[1]-10), 0, 2, [0,0,255],2,cv2.LINE_AA)
+
+	print distanceMedium
 
 image = cv2.imread("org.jpg")
 gray=cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -168,6 +224,10 @@ print "result"
 print "before ",lines
 print "after ",averageLines
 
+margins = getCarMargins(line_image_avg)
+drawCarDirection(line_image_avg, margins)
+print 'get orientation'
+getOrientation(line_image_avg, averageLines, margins)
 
 
 result = weighted_img(line_image, image, a=0.8, b=1., g=0.)
