@@ -1,4 +1,7 @@
 import cv2
+from picamera import PiCamera
+from time import sleep
+from picamera.array import PiRGBArray
 import numpy as np
 import copy
 
@@ -99,9 +102,7 @@ def averageLines(lines):
 	while (i < len(lines)):
 		j = i + 1
 		while (j < len(lines)):
-			print lines[i], lines[j], distanceLines(lines[i][0], lines[j][0])
 			if (threshold > distanceLines(lines[i][0], lines[j][0])):
-				print "same line at", j
 				alreadyDetected[j]=1
 			j = j +1
 		i = i +1
@@ -116,7 +117,7 @@ def getCarMargins(image):
 	width = 50
 	height = 10
 	imgShape=image.shape
-	return [(imgShape[1]/2 - (imgShape[1] * width /100 / 2),imgShape[0]), (imgShape[1]/2 + (imgShape[1] * width /100 / 2),imgShape[0]-(imgShape[0] * 10/100))]
+	return [(imgShape[1]/2 - (imgShape[1] * width /100 / 2),imgShape[0]), (imgShape[1]/2 + (imgShape[1] * width /100 / 2),imgShape[0]-(imgShape[0] * height/100))]
 def drawCarDirection(image, margins):
 	#width in procent
 	width = 50
@@ -124,25 +125,23 @@ def drawCarDirection(image, margins):
 	cv2.rectangle(image, margins[0], margins[1], [0,255,0], 2)
 def getOrientation(image, lines, margins):
 	center = [(margins[0][0] + margins[1][0]) / 2, (margins[0][1] + margins[1][1]) / 2]
-	laneEnd = []	
+	laneEnd = []
 
 	if (1 < len(lines)):
 		i = 0
 		while (2 > i):
 			closePoint = lines[i][0]
 			secondPoint = copy.copy(lines[i][0])
-			print closePoint, secondPoint, closePoint
-			if (distancePoint(closePoint[0], closePoint[1], center[0], center[1]) < distancePoint(secondPoint[2], secondPoint[3], center[0], center[1])):
+			#print closePoint, secondPoint, closePoint,distancePoint(secondPoint[2], secondPoint[3], center[0], center[1]),distancePoint(closePoint[0], closePoint[1], center[0], center[1])
+			if (distancePoint(closePoint[0], closePoint[1], center[0], center[1]) > distancePoint(secondPoint[2], secondPoint[3], center[0], center[1])):
 				closePoint[0] = secondPoint[2]
 				closePoint[1] = secondPoint[3]
 				closePoint[2] = secondPoint[0]
 				closePoint[3] = secondPoint[1]
 			i = i + 1
 
-			print closePoint
 			cv2.circle(image, (closePoint[0], closePoint[1]), 20,[0,0,255], 2)
 			laneEnd.insert(len(laneEnd), [closePoint[0], closePoint[1]])
-		print laneEnd
 
 	cv2.line(image, (center[0], center[1]), (center[0], 100), [0,255,0], 2)
 	laneLocLeft = laneEnd[0]
@@ -168,7 +167,18 @@ def getOrientation(image, lines, margins):
 
 	print distanceMedium
 
-image = cv2.imread("org.jpg")
+# Set up PiCamera and let it warm up
+camera = PiCamera()
+raw = PiRGBArray(camera)
+
+camera.capture(raw, format="bgr")
+image = raw.array
+
+
+cv2.imwrite("org.jpg", image)
+
+
+
 gray=cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 img_hsv=cv2.cvtColor(image,cv2.COLOR_RGB2HSV)
 
@@ -189,16 +199,14 @@ canny_edges = cv2.Canny(gauss_gray,low_threshold,high_threshold)
 imshape = image.shape
 lower_left = [imshape[1]/9,imshape[0]]
 lower_right = [imshape[1]-imshape[1]/9,imshape[0]]
-top_left = [imshape[1]/2-imshape[1]/8,imshape[0]/2+imshape[0]/10]
-top_right = [imshape[1]/2+imshape[1]/8,imshape[0]/2+imshape[0]/10]
+top_left = [imshape[1]/2-imshape[1]/8,imshape[0]/2+imshape[0]/5]
+top_right = [imshape[1]/2+imshape[1]/8,imshape[0]/2+imshape[0]/5]
 
 lower_left=[0,imshape[0] - 20]
 lower_right=[imshape[1],imshape[0] - 20]
-top_right=[imshape[1]*5/8,imshape[0]/2]
-top_left=[imshape[1]/5,imshape[0]/2]
+top_right=[imshape[1],imshape[0]*1/4]
+top_left=[imshape[1]/5,imshape[0]*1/4]
 
-print lower_left, lower_right
-print imshape
 
 vertices = [np.array([lower_left,top_left,top_right,lower_right],dtype=np.int32)]
 roi_image = region_of_interest(canny_edges, vertices)
@@ -220,11 +228,9 @@ draw_lines(line_image, lines)
 averageLines = averageLines(lines)
 draw_lines(line_image_avg, averageLines)
 
-print "result"
-print "before ",lines
-print "after ",averageLines
 
 margins = getCarMargins(line_image_avg)
+print margins
 drawCarDirection(line_image_avg, margins)
 print 'get orientation'
 getOrientation(line_image_avg, averageLines, margins)
