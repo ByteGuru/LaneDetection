@@ -1,7 +1,7 @@
 import cv2
-from picamera import PiCamera
+#from picamera import PiCamera
 from time import sleep
-from picamera.array import PiRGBArray
+#from picamera.array import PiRGBArray
 import numpy as np
 import copy
 
@@ -91,7 +91,7 @@ def distanceLines(line1, line2):
 	return distance / 2
 
 def averageLines(lines):
-	threshold = 60
+	threshold = 100
 	i = 0
 	k = 0
 	newList=[]
@@ -174,13 +174,13 @@ def getOrientation(image, lines, margins):
 
 
 # Set up PiCamera and let it warm up
-camera = PiCamera()
-raw = PiRGBArray(camera)
+#camera = PiCamera()
+#raw = PiRGBArray(camera)
 
-camera.capture(raw, format="bgr")
-image = raw.array
+#camera.capture(raw, format="bgr")
+#image = raw.array
 
-
+image = cv2.imread("org.jpg")
 cv2.imwrite("org.jpg", image)
 
 
@@ -232,6 +232,7 @@ lines = houghResult[1]
 draw_lines(line_image, lines)
 
 averageLines = averageLines(lines)
+print averageLines
 draw_lines(line_image_avg, averageLines)
 
 
@@ -242,7 +243,7 @@ print('get orientation')
 getOrientation(line_image_avg, averageLines, margins)
 
 
-result = weighted_img(line_image, image, a=0.8, b=1., g=0.)
+result = weighted_img(line_image_avg, image, a=0.8, b=1., g=0.)
 
 
 
