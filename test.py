@@ -33,7 +33,7 @@ def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
     Returns an image with hough lines drawn.
     """
     lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
-    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8) 
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
     return (line_img, lines)
 
 # Python 3 has support for cool math symbols.
@@ -94,7 +94,7 @@ def averageLines(lines):
 	threshold = 60
 	i = 0
 	k = 0
-	newList=[]	
+	newList=[]
 	alreadyDetected=[]
 	while (k < len(lines)):
 		alreadyDetected.insert(k,0)
@@ -113,18 +113,20 @@ def averageLines(lines):
 		i+=1
 	return newList
 def getCarMargins(image):
-	#width in procent
-	width = 50
-	height = 10
-	imgShape=image.shape
-	return [(imgShape[1]/2 - (imgShape[1] * width /100 / 2),imgShape[0]), (imgShape[1]/2 + (imgShape[1] * width /100 / 2),imgShape[0]-(imgShape[0] * height/100))]
+    #width in procent
+    width = 50
+    height = 10
+    imgShape=image.shape
+    return [(imgShape[1]/2 - (imgShape[1] * width /100 / 2),imgShape[0]), (imgShape[1]/2 + (imgShape[1] * width /100 / 2),imgShape[0]-(imgShape[0] * height/100))]
+
 def drawCarDirection(image, margins):
-	#width in procent
-	width = 50
-	imgShape=image.shape
-	cv2.rectangle(image, margins[0], margins[1], [0,255,0], 2)
+    #width in procent
+    width = 50
+    imgShape=image.shape
+    cv2.rectangle(image, (int(margins[0][0]),int(margins[0][0])), (int(margins[1][0]),int(margins[1][1])), [0,255,0], 2)
+
 def getOrientation(image, lines, margins):
-	center = [(margins[0][0] + margins[1][0]) / 2, (margins[0][1] + margins[1][1]) / 2]
+	center = [int((margins[0][0] + margins[1][0]) / 2), int((margins[0][1] + margins[1][1]) / 2)]
 	laneEnd = []
 
 	if (1 < len(lines)):
@@ -149,23 +151,27 @@ def getOrientation(image, lines, margins):
 	if (laneLocLeft[0] > laneLocRight[0]):
 		laneLocRight = laneLocLeft
 		laneLocLeft = laneEnd[1]
-	print "lane left=",laneLocLeft," lane right=", laneLocRight
-	
+	print("lane left=",laneLocLeft," lane right=", laneLocRight)
+
 	distanceLeftLaneCenter = center[0] - laneLocLeft[0]
 	distanceRightLaneCenter = laneLocRight[0] - center[0]
 	distanceMedium = (distanceLeftLaneCenter + distanceRightLaneCenter) / 2
 	distanceLeftLaneProcent = (distanceLeftLaneCenter * 100) / distanceMedium
 	distanceRightLaneProcent = (distanceRightLaneCenter * 100) / distanceMedium
 
-	print "Left procent=", distanceLeftLaneProcent, "Right procent=", distanceRightLaneProcent
+	print("Left procent=", distanceLeftLaneProcent, "Right procent=", distanceRightLaneProcent)
 
 	cv2.line(image, (laneLocLeft[0], laneLocLeft[1]), (center[0], center[1]),[0,0,255],2)
 	cv2.putText(image, str(distanceLeftLaneCenter)+" "+str(distanceLeftLaneProcent)+"%", (laneLocLeft[0] + 20,laneLocLeft[1]-10), 0, 2, [0,0,255],2,cv2.LINE_AA)
-	
+
 	cv2.line(image, (laneLocRight[0], laneLocRight[1]), (center[0], center[1]),[0,0,255],2)
 	cv2.putText(image, str(distanceRightLaneCenter) + " "+ str(distanceRightLaneProcent)+"%", (laneLocRight[0] - 300,laneLocRight[1]-10), 0, 2, [0,0,255],2,cv2.LINE_AA)
 
-	print distanceMedium
+	print (distanceMedium)
+
+
+
+
 
 # Set up PiCamera and let it warm up
 camera = PiCamera()
@@ -230,9 +236,9 @@ draw_lines(line_image_avg, averageLines)
 
 
 margins = getCarMargins(line_image_avg)
-print margins
+print(margins)
 drawCarDirection(line_image_avg, margins)
-print 'get orientation'
+print('get orientation')
 getOrientation(line_image_avg, averageLines, margins)
 
 
